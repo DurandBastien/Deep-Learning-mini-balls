@@ -66,7 +66,7 @@ if __name__ == "__main__":
     model = LeNet()
 
     # This criterion combines LogSoftMax and NLLLoss in one single class.
-    crossentropy = torch.nn.CrossEntropyLoss(reduction='mean')
+    crossentropy = torch.nn.BCEWithLogitsLoss()
     
     # Set up the optimizer: stochastic gradient descent
     # with a learning rate of 0.01
@@ -92,11 +92,9 @@ if __name__ == "__main__":
         # Cycle through batches
         for batch_idx, (data, labels, bb) in enumerate(train_loader):
             
-            labels = labels.type(torch.LongTensor)
             print(labels)
             optimizer.zero_grad()
             y = model(data)
-            
             loss = crossentropy(y, labels)
             loss.backward()
             running_loss += loss.item()
