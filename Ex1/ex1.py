@@ -18,7 +18,7 @@ class LeNet(torch.nn.Module):
         # x = F.max_pool2d(x, 2, 2)
         # x = F.relu(self.conv2(x))
         # x = F.max_pool2d(x, 2, 2)
-        # x = x.view(-1, 4*4*50)
+        # x = x.view(-1, 50, 3*100*100)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -36,7 +36,7 @@ def calcError (net, dataloader):
     vloss=0
     vcorrect=0
     vcount=0
-    for batch_idx, (data, labels) in enumerate(dataloader):
+    for batch_idx, (data, labels, bb) in enumerate(dataloader):
         y = model(data)
         loss = crossentropy(y, labels)
         vloss += loss.item()
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     train_dataset, test_dataset = torch_d.random_split(dataset, [16799, 4200]) 
     
-    BATCHSIZE=50
+    BATCHSIZE=1
     
     test_loader = torch.utils.data.DataLoader(test_dataset,
         batch_size=BATCHSIZE, shuffle=True)
@@ -61,9 +61,10 @@ if __name__ == "__main__":
         batch_size=BATCHSIZE, shuffle=True)
     
     img, labels, bb = train_dataset.__getitem__(42)
-    print(img.size())
     
     model = LeNet()
+
+    pos_weight = torch.ones([9])
 
     # This criterion combines LogSoftMax and NLLLoss in one single class.
     crossentropy = torch.nn.BCEWithLogitsLoss()
@@ -92,9 +93,10 @@ if __name__ == "__main__":
         # Cycle through batches
         for batch_idx, (data, labels, bb) in enumerate(train_loader):
             
-            print(labels)
+
             optimizer.zero_grad()
             y = model(data)
+            print(y.shape, labels.shape)
             loss = crossentropy(y, labels)
             loss.backward()
             running_loss += loss.item()
