@@ -1,9 +1,10 @@
 import torch
+import numpy as np
 from torch.nn import functional as F
 import tp_src.dataset_det as d_loader
 import torch.utils.data as torch_d
 
-STATS_INTERVAL = 200
+STATS_INTERVAL = 50
 
 class LeNet(torch.nn.Module):
     def __init__(self):
@@ -38,21 +39,36 @@ def calcError (net, dataloader):
     vcount=0
     for batch_idx, (data, labels, bb) in enumerate(dataloader):
         y = model(data)
+        y = torch.squeeze(y, 1)
+        labels = torch.squeeze(labels, 1)
+        #labels=torch.LongTensor(np.array(labels.numpy(),np.long))
         loss = crossentropy(y, labels)
         vloss += loss.item()
-        _, predicted = torch.max(y.data, 1)
+        predicted = predictedBalls (y.data)
+        #_, predicted = torch.max(y.data, 1)
         vcorrect += (predicted == labels).sum().item()
         vcount += BATCHSIZE
+    print(vloss, len(dataloader), vloss/len(dataloader))
     return vloss/len(dataloader), 100.0*(1.0-vcorrect/vcount)
+
+def predictedBalls (yBatches):
+    _, maxItemsIndex = torch.topk(yBatches, k=3, dim=1)
+    for i in range(len(yBatches)):
+        for j in range(len(yBatches[i])):
+            if j in maxItemsIndex[i]:
+                yBatches[i][j] = 1
+            else:
+                yBatches[i][j] = 0
+    return yBatches
 
 if __name__ == "__main__":
     # train_dataset = Balls_CF_Detection ("../mini_balls/train", 20999,
     #     transforms.Normalize([128, 128, 128], [50, 50, 50]))
-    dataset = d_loader.Balls_CF_Detection ("train", 20999, transform)
+    dataset = d_loader.Balls_CF_Detection ("../../train/train/train", 20999, transform)
 
     train_dataset, test_dataset = torch_d.random_split(dataset, [16799, 4200]) 
     
-    BATCHSIZE=1
+    BATCHSIZE=50
     
     test_loader = torch.utils.data.DataLoader(test_dataset,
         batch_size=BATCHSIZE, shuffle=True)
@@ -92,17 +108,20 @@ if __name__ == "__main__":
         
         # Cycle through batches
         for batch_idx, (data, labels, bb) in enumerate(train_loader):
-            
 
             optimizer.zero_grad()
             y = model(data)
-            print(y.shape, labels.shape)
+            y = torch.squeeze(y, 1)
+            labels = torch.squeeze(labels, 1)
+            #labels=torch.LongTensor(np.array(labels.numpy(),np.long))
             loss = crossentropy(y, labels)
+            print(loss)
             loss.backward()
             running_loss += loss.item()
             optimizer.step()
     
-            _, predicted = torch.max(y.data, 1)
+            predicted = predictedBalls (y.data) #torch.max(y.data, 1)
+
             running_correct += (predicted == labels).sum().item()
             running_count += BATCHSIZE
     
@@ -128,5 +147,4 @@ if __name__ == "__main__":
                 running_loss = 0.0
                 running_correct = 0.0
                 running_count=0.0
-
 
